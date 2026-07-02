@@ -5,7 +5,23 @@
 
 import React, { useState } from 'react';
 import { ComparisonReport, ComparisonItem } from '../types';
-import { Edit3, Check, Trash2, Plus, Sparkles, TrendingUp, HelpCircle, LayoutGrid, Layers, ArrowRight, X } from 'lucide-react';
+import { 
+  Edit3, 
+  Check, 
+  Trash2, 
+  Plus, 
+  Sparkles, 
+  TrendingUp, 
+  HelpCircle, 
+  LayoutGrid, 
+  Layers, 
+  ArrowRight, 
+  X, 
+  Sliders, 
+  Eye, 
+  MessageSquare,
+  Info
+} from 'lucide-react';
 
 interface ComparisonEditorProps {
   report: ComparisonReport;
@@ -37,6 +53,12 @@ export const ComparisonEditor: React.FC<ComparisonEditorProps> = ({
     newState: '',
     benefit: ''
   });
+
+  // Client-side visual comparison states
+  const [comparisonMode, setComparisonMode] = useState<'slider' | 'side-by-side' | 'annotator'>('slider');
+  const [sliderPos, setSliderPos] = useState(50);
+  const [pendingHotspot, setPendingHotspot] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredHotspotId, setHoveredHotspotId] = useState<string | null>(null);
 
   const handleSaveSummary = () => {
     onUpdate({
@@ -88,7 +110,8 @@ export const ComparisonEditor: React.FC<ComparisonEditorProps> = ({
 
     const created: ComparisonItem = {
       ...newItem,
-      id: `comp-${Date.now()}`
+      id: `comp-${Date.now()}`,
+      ...(pendingHotspot ? { x: pendingHotspot.x, y: pendingHotspot.y } : {})
     };
 
     onUpdate({
@@ -102,56 +125,266 @@ export const ComparisonEditor: React.FC<ComparisonEditorProps> = ({
       newState: '',
       benefit: ''
     });
+    setPendingHotspot(null);
     setShowAddForm(false);
+  };
+
+  // Add click listener for hotspot plotting on NEW image
+  const handleNewImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (comparisonMode !== 'annotator') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 1000) / 10;
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 1000) / 10;
+
+    setPendingHotspot({ x, y });
+    setNewItem({
+      element: `Redesign Accent (Point ${Math.round(x)}%, ${Math.round(y)}%)`,
+      oldState: 'Legacy layout details...',
+      newState: 'Redesigned visual enhancement...',
+      benefit: 'Significantly elevates visual engagement and click rates.'
+    });
+    setShowAddForm(true);
+  };
+
+  const scrollToItem = (id: string) => {
+    const el = document.getElementById(`item-card-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Temporary highlight
+      el.classList.add('ring-2', 'ring-indigo-500');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500'), 2000);
+    }
   };
 
   return (
     <div className="space-y-8 animate-fade-in">
       
-      {/* Side-by-side Visual comparison preview */}
+      {/* Dynamic Comparison Studio Header & Tabs */}
       {(oldImageSrc || newImageSrc) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-rose-700 uppercase tracking-widest bg-rose-50 border border-rose-200/50 px-2.5 py-1 rounded">
-                OLD Website Design (Before)
-              </span>
-              {report.oldImageName && <span className="text-[10px] text-slate-400">{report.oldImageName}</span>}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-indigo-600 tracking-wider uppercase">Visual Review Workspace</span>
+              <h4 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                Redesign Interactive Comparison Studio
+              </h4>
             </div>
-            <div className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center group relative">
-              {oldImageSrc ? (
-                <img
-                  src={oldImageSrc}
-                  alt="Old Website Design"
-                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <span className="text-slate-400 text-xs">No image provided</span>
-              )}
+
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-250">
+              <button
+                onClick={() => { setComparisonMode('slider'); setPendingHotspot(null); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  comparisonMode === 'slider'
+                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/40'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sliders className="w-3.5 h-3.5" /> Wipe Slider
+              </button>
+
+              <button
+                onClick={() => { setComparisonMode('side-by-side'); setPendingHotspot(null); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  comparisonMode === 'side-by-side'
+                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/40'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" /> Side-by-Side
+              </button>
+
+              <button
+                onClick={() => { setComparisonMode('annotator'); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  comparisonMode === 'annotator'
+                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/40'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Mark hotspots directly on the redesigned layout"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-indigo-600 animate-pulse" /> Pin Hotspots
+              </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded">
-                NEW Redesign (After)
-              </span>
-              {report.newImageName && <span className="text-[10px] text-slate-400">{report.newImageName}</span>}
-            </div>
-            <div className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center group relative">
-              {newImageSrc ? (
+          {/* Interactive Workspace Area */}
+          {comparisonMode === 'slider' && oldImageSrc && newImageSrc && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[11px] text-slate-500 font-bold px-1">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-500 rounded-full inline-block"></span> Left: Legacy Design</span>
+                <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold">Drag slider below to swipe between layouts</span>
+                <span className="flex items-center gap-1">Right: Modern Redesign <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block"></span></span>
+              </div>
+              <div className="relative w-full aspect-[16/10] sm:aspect-video select-none overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
+                {/* Old Image (Right/Background) */}
                 <img
-                  src={newImageSrc}
-                  alt="New Website Design"
-                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                  src={oldImageSrc}
+                  alt="Legacy Design"
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
                   referrerPolicy="no-referrer"
                 />
-              ) : (
-                <span className="text-slate-400 text-xs">No image provided</span>
-              )}
+
+                {/* New Image Container (Left/Foreground, width-controlled) */}
+                <div 
+                  className="absolute inset-y-0 left-0 overflow-hidden border-r-2 border-white shadow-2xl pointer-events-none z-10 transition-all duration-75"
+                  style={{ width: `${sliderPos}%` }}
+                >
+                  <img
+                    src={newImageSrc}
+                    alt="New Redesign"
+                    className="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
+                    style={{ width: '100%', maxWidth: 'none', height: '100%' }}
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+
+                {/* Slider bar center handle */}
+                <div 
+                  className="absolute inset-y-0 w-0.5 bg-white pointer-events-none z-20 flex items-center justify-center"
+                  style={{ left: `${sliderPos}%` }}
+                >
+                  <div className="w-8 h-8 rounded-full bg-white text-indigo-600 border border-slate-300 shadow-xl flex items-center justify-center text-sm font-black select-none pointer-events-none transform -translate-x-1/2">
+                    ↔
+                  </div>
+                </div>
+
+                {/* Range Input Overlay */}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={sliderPos}
+                  onChange={(e) => setSliderPos(Number(e.target.value))}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {comparisonMode === 'side-by-side' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-700 uppercase tracking-widest bg-rose-50 border border-rose-200/50 px-2.5 py-1 rounded">
+                    OLD Website Design (Before)
+                  </span>
+                  {report.oldImageName && <span className="text-[10px] text-slate-400">{report.oldImageName}</span>}
+                </div>
+                <div className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center group relative">
+                  {oldImageSrc ? (
+                    <img
+                      src={oldImageSrc}
+                      alt="Old Website Design"
+                      className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="text-slate-400 text-xs">No image provided</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 border border-emerald-200/50 px-2.5 py-1 rounded">
+                    NEW Redesign (After)
+                  </span>
+                  {report.newImageName && <span className="text-[10px] text-slate-400">{report.newImageName}</span>}
+                </div>
+                <div className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center group relative">
+                  {newImageSrc ? (
+                    <img
+                      src={newImageSrc}
+                      alt="New Website Design"
+                      className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="text-slate-400 text-xs">No image provided</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {comparisonMode === 'annotator' && newImageSrc && (
+            <div className="space-y-3">
+              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex items-start gap-2.5">
+                <Info className="w-4.5 h-4.5 text-indigo-600 mt-0.5 shrink-0" />
+                <div className="text-xs text-indigo-950 leading-relaxed">
+                  <strong className="font-bold">Annotation Mockup Mode:</strong> Click directly on any area of the redesigned (NEW) screenshot below to plot a visual review hotspot. You can specify what was wrong previously, what has been improved, and the strategic business value!
+                </div>
+              </div>
+
+              <div className="relative w-full aspect-[16/10] sm:aspect-video rounded-xl border border-indigo-200 bg-slate-100 overflow-hidden cursor-crosshair">
+                <div 
+                  className="w-full h-full flex items-center justify-center relative"
+                  onClick={handleNewImageClick}
+                >
+                  <img
+                    src={newImageSrc}
+                    alt="Click to Annotate Mockup"
+                    className="w-full h-full object-contain pointer-events-none select-none"
+                    referrerPolicy="no-referrer"
+                  />
+
+                  {/* Render existing annotated items as numbered pulses */}
+                  {report.items.map((item, index) => {
+                    if (item.x === undefined || item.y === undefined) return null;
+                    const isHovered = hoveredHotspotId === item.id;
+                    return (
+                      <div
+                        key={item.id}
+                        className="absolute z-20 group"
+                        style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)' }}
+                        onMouseEnter={() => setHoveredHotspotId(item.id)}
+                        onMouseLeave={() => setHoveredHotspotId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Avoid plotting new pin
+                          scrollToItem(item.id);
+                        }}
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <span className="animate-ping absolute inline-flex h-7 w-7 rounded-full bg-indigo-400 opacity-75"></span>
+                          <span className="relative flex items-center justify-center rounded-full h-6 w-6 bg-indigo-600 text-white font-extrabold text-xs border-2 border-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors">
+                            {index + 1}
+                          </span>
+                        </div>
+
+                        {/* Hover Tooltip card */}
+                        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-slate-900/95 text-white p-2.5 rounded-lg shadow-xl text-[11px] pointer-events-none transition-all duration-200 z-30 ${
+                          isHovered ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-95'
+                        }`}>
+                          <div className="font-bold text-indigo-300 border-b border-white/10 pb-1 mb-1 truncate">
+                            {index + 1}. {item.element}
+                          </div>
+                          <p className="line-clamp-2 text-slate-300">
+                            {item.newState}
+                          </p>
+                          <div className="text-[9px] font-semibold text-emerald-400 mt-1">
+                            Click to inspect breakdown
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Pending/New active pin representation */}
+                  {pendingHotspot && (
+                    <div 
+                      className="absolute z-30 flex items-center justify-center"
+                      style={{ left: `${pendingHotspot.x}%`, top: `${pendingHotspot.y}%`, transform: 'translate(-50%, -50%)' }}
+                    >
+                      <span className="animate-ping absolute inline-flex h-9 w-9 rounded-full bg-rose-400 opacity-80"></span>
+                      <span className="relative flex items-center justify-center rounded-full h-7 w-7 bg-rose-600 text-white font-black text-xs border-2 border-white shadow-xl">
+                        ★
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -383,6 +616,7 @@ export const ComparisonEditor: React.FC<ComparisonEditorProps> = ({
               return (
                 <div
                   key={item.id}
+                  id={`item-card-${item.id}`}
                   className={`p-5 rounded-2xl border transition-all duration-300 ${
                     isEditing
                       ? 'bg-indigo-50/15 border-indigo-400 ring-1 ring-indigo-400/25'

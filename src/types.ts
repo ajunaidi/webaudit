@@ -40,6 +40,8 @@ export interface ComparisonItem {
   oldState: string; // Pehlay ya tha
   newState: string; // Ab ya ha
   benefit: string;  // Es say ya fida ho ga
+  x?: number;       // Hotspot X percentage
+  y?: number;       // Hotspot Y percentage
 }
 
 export interface ComparisonReport {
