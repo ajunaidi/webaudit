@@ -1323,7 +1323,13 @@ export default function App() {
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Overall Health Score</span>
                             
                             {/* radial progress */}
-                            <svg viewBox="0 0 120 120" className="w-24 h-24 mx-auto my-1">
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 120 120" 
+                              width="96" 
+                              height="96" 
+                              className="mx-auto my-1"
+                            >
                               <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
                               <circle cx="60" cy="60" r="50" fill="none" stroke="#6366f1" strokeWidth="10" 
                                 strokeDasharray={`${2 * Math.PI * 50}`} 
@@ -1331,7 +1337,19 @@ export default function App() {
                                 strokeLinecap="round"
                                 transform="rotate(-90 60 60)"
                               />
-                              <text x="60" y="66" textAnchor="middle" className="text-2xl font-black fill-slate-800 font-sans">{activeAuditReport.scores.overall}%</text>
+                              <text 
+                                x="60" 
+                                y="66" 
+                                textAnchor="middle" 
+                                fill="#1e293b" 
+                                style={{ 
+                                  fontSize: '24px', 
+                                  fontWeight: '900', 
+                                  fontFamily: 'system-ui, sans-serif' 
+                                }}
+                              >
+                                {activeAuditReport.scores.overall}%
+                              </text>
                             </svg>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                               activeAuditReport.scores.overall < 50 ? 'bg-rose-50 text-rose-700' :
@@ -1404,41 +1422,47 @@ export default function App() {
 
                         {/* SVG Bar Graph */}
                         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                          <svg viewBox="0 0 400 180" className="w-full h-auto">
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 400 180" 
+                            width="710" 
+                            height="320" 
+                            style={{ width: '100%', height: 'auto', display: 'block' }}
+                          >
                             {/* Grid Lines */}
-                            <line x1="100" y1="15" x2="380" y2="15" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3" />
-                            <line x1="100" y1="45" x2="380" y2="45" stroke="#f1f5f9" strokeWidth="1" />
-                            <line x1="100" y1="75" x2="380" y2="75" stroke="#f1f5f9" strokeWidth="1" />
-                            <line x1="100" y1="105" x2="380" y2="105" stroke="#f1f5f9" strokeWidth="1" />
-                            <line x1="100" y1="135" x2="380" y2="135" stroke="#f1f5f9" strokeWidth="1" />
-                            <line x1="100" y1="165" x2="380" y2="165" stroke="#e2e8f0" strokeWidth="1.5" />
+                            <line x1="100" y1="15" x2="380" y2="15" stroke="#e2e8f0" strokeWidth={1} strokeDasharray="3" />
+                            <line x1="100" y1="45" x2="380" y2="45" stroke="#f1f5f9" strokeWidth={1} />
+                            <line x1="100" y1="75" x2="380" y2="75" stroke="#f1f5f9" strokeWidth={1} />
+                            <line x1="100" y1="105" x2="380" y2="105" stroke="#f1f5f9" strokeWidth={1} />
+                            <line x1="100" y1="135" x2="380" y2="135" stroke="#f1f5f9" strokeWidth={1} />
+                            <line x1="100" y1="165" x2="380" y2="165" stroke="#e2e8f0" strokeWidth={1.5} />
                             
-                            <line x1="100" y1="10" x2="100" y2="170" stroke="#cbd5e1" strokeWidth="1.5" />
+                            <line x1="100" y1="10" x2="100" y2="170" stroke="#cbd5e1" strokeWidth={1.5} />
                             
                             {/* Design Bar */}
-                            <text x="10" y="50" className="text-[9px] font-extrabold fill-slate-700">Visual Design</text>
+                            <text x="10" y="50" fill="#334155" style={{ fontSize: '9px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}>Visual Design</text>
                             <rect x="100" y="38" width={activeAuditReport.scores.design * 2.7} height="12" rx="3" fill="#6366f1" />
-                            <text x={Math.max(110, 100 + activeAuditReport.scores.design * 2.7 - 25)} y="47" className="text-[8px] font-black fill-white">{activeAuditReport.scores.design}%</text>
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.design * 2.7 - 25)} y="47" fill="#ffffff" style={{ fontSize: '8px', fontWeight: '900', fontFamily: 'system-ui, sans-serif' }}>{activeAuditReport.scores.design}%</text>
 
                             {/* Content Bar */}
-                            <text x="10" y="80" className="text-[9px] font-extrabold fill-slate-700">Content Flow</text>
+                            <text x="10" y="80" fill="#334155" style={{ fontSize: '9px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}>Content Flow</text>
                             <rect x="100" y="68" width={activeAuditReport.scores.content * 2.7} height="12" rx="3" fill="#ec4899" />
-                            <text x={Math.max(110, 100 + activeAuditReport.scores.content * 2.7 - 25)} y="77" className="text-[8px] font-black fill-white">{activeAuditReport.scores.content}%</text>
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.content * 2.7 - 25)} y="77" fill="#ffffff" style={{ fontSize: '8px', fontWeight: '900', fontFamily: 'system-ui, sans-serif' }}>{activeAuditReport.scores.content}%</text>
 
                             {/* SEO Bar */}
-                            <text x="10" y="110" className="text-[9px] font-extrabold fill-slate-700">SEO Indexing</text>
+                            <text x="10" y="110" fill="#334155" style={{ fontSize: '9px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}>SEO Indexing</text>
                             <rect x="100" y="98" width={activeAuditReport.scores.seo * 2.7} height="12" rx="3" fill="#10b981" />
-                            <text x={Math.max(110, 100 + activeAuditReport.scores.seo * 2.7 - 25)} y="107" className="text-[8px] font-black fill-white">{activeAuditReport.scores.seo}%</text>
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.seo * 2.7 - 25)} y="107" fill="#ffffff" style={{ fontSize: '8px', fontWeight: '900', fontFamily: 'system-ui, sans-serif' }}>{activeAuditReport.scores.seo}%</text>
 
                             {/* CRO Bar */}
-                            <text x="10" y="140" className="text-[9px] font-extrabold fill-slate-700">Conversion (CRO)</text>
+                            <text x="10" y="140" fill="#334155" style={{ fontSize: '9px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}>Conversion (CRO)</text>
                             <rect x="100" y="128" width={activeAuditReport.scores.cro * 2.7} height="12" rx="3" fill="#f59e0b" />
-                            <text x={Math.max(110, 100 + activeAuditReport.scores.cro * 2.7 - 25)} y="137" className="text-[8px] font-black fill-white">{activeAuditReport.scores.cro}%</text>
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.cro * 2.7 - 25)} y="137" fill="#ffffff" style={{ fontSize: '8px', fontWeight: '900', fontFamily: 'system-ui, sans-serif' }}>{activeAuditReport.scores.cro}%</text>
 
                             {/* UI/UX Bar */}
-                            <text x="10" y="170" className="text-[9px] font-extrabold fill-slate-700">Mobile UX</text>
+                            <text x="10" y="170" fill="#334155" style={{ fontSize: '9px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}>Mobile UX</text>
                             <rect x="100" y="158" width={activeAuditReport.scores.ui * 2.7} height="12" rx="3" fill="#06b6d4" />
-                            <text x={Math.max(110, 100 + activeAuditReport.scores.ui * 2.7 - 25)} y="167" className="text-[8px] font-black fill-white">{activeAuditReport.scores.ui}%</text>
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.ui * 2.7 - 25)} y="167" fill="#ffffff" style={{ fontSize: '8px', fontWeight: '900', fontFamily: 'system-ui, sans-serif' }}>{activeAuditReport.scores.ui}%</text>
                           </svg>
                         </div>
 
@@ -1702,8 +1726,17 @@ export default function App() {
                                 <img src={oldImage} alt="Legacy screenshot" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                               ) : (
                                 <div className="text-center p-4">
-                                  <svg className="w-12 h-12 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  <svg 
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="48" 
+                                    height="48" 
+                                    className="mx-auto mb-2" 
+                                    fill="none" 
+                                    stroke="#94a3b8" 
+                                    strokeWidth="1.5" 
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
                                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">No Legacy Image uploaded</span>
                                   <span className="text-[9px] text-slate-400 block mt-0.5">Showing baseline design critique</span>
@@ -1720,8 +1753,17 @@ export default function App() {
                                 <img src={newImage} alt="Redesign screenshot" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                               ) : (
                                 <div className="text-center p-4">
-                                  <svg className="w-12 h-12 text-indigo-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  <svg 
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="48" 
+                                    height="48" 
+                                    className="mx-auto mb-2" 
+                                    fill="none" 
+                                    stroke="#a5b4fc" 
+                                    strokeWidth="1.5" 
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
                                   <span className="text-[10px] font-bold text-indigo-400 block uppercase tracking-wider">No Redesign Image uploaded</span>
                                   <span className="text-[9px] text-indigo-400 block mt-0.5">Showing mock redesign workspace</span>
