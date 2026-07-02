@@ -32,6 +32,8 @@ import { AuditReport, ComparisonReport, AuditIssue, ComparisonItem, AuditCategor
 import { AuditEditor } from './components/AuditEditor';
 import { ComparisonEditor } from './components/ComparisonEditor';
 import { HistoricalTrendChart } from './components/CustomChart';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // ==========================================
 // SEED/SAMPLE DATA FOR AN INSTANT PREMIUM EXPERIENCE
@@ -160,6 +162,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState('');
 
   // Active Report being viewed/edited
   const [activeAuditReport, setActiveAuditReport] = useState<AuditReport | null>(null);
@@ -316,7 +320,15 @@ export default function App() {
         })
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        throw new Error(textResponse.substring(0, 300) || `Server returned invalid content-type with status code ${response.status}`);
+      }
+      
       clearInterval(interval);
 
       if (!response.ok || data.error) {
@@ -375,7 +387,15 @@ export default function App() {
         })
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const textResponse = await response.text();
+        throw new Error(textResponse.substring(0, 300) || `Server returned invalid content-type with status code ${response.status}`);
+      }
+      
       clearInterval(interval);
 
       if (!response.ok || data.error) {
@@ -401,9 +421,83 @@ export default function App() {
     }
   };
 
-  // Direct export PDF trigger (handles clean transition to printable window style)
-  const triggerPdfExport = () => {
-    window.print();
+  // Advanced programmatic PDF generation using html2canvas & jsPDF
+  const triggerPdfExport = async () => {
+    const element = document.getElementById('pdf-report-content');
+    if (!element) {
+      alert('Could not find report content to export. Generating default print fallback.');
+      window.print();
+      return;
+    }
+
+    setIsExportingPdf(true);
+    setPdfProgress('Initializing PDF engine & analyzing document elements...');
+
+    try {
+      // Small pause to allow state overlay to render
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      setPdfProgress('Capturing layout sections into high-resolution canvas...');
+      
+      const canvas = await html2canvas(element, {
+        scale: 2, // 2x device pixel ratio for super crisp vector-like text
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const clonedEl = clonedDoc.getElementById('pdf-report-content');
+          if (clonedEl) {
+            // Force block visibility on cloned element because print-only has display: none in index.css
+            clonedEl.style.setProperty('display', 'block', 'important');
+            clonedEl.style.width = '800px';
+            clonedEl.style.padding = '40px';
+            clonedEl.style.backgroundColor = '#ffffff';
+          }
+        }
+      });
+
+      setPdfProgress('Structuring document pages & rendering vector layers...');
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add cover/first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      // Slices remaining sections across multiple dynamic pages perfectly
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+
+      setPdfProgress('Compressing artifact and initiating download...');
+      
+      const reportName = activeAuditReport 
+        ? `webaudit_${activeAuditReport.url.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_report.pdf` 
+        : `webaudit_design_comparison_report.pdf`;
+
+      pdf.save(reportName);
+      
+      setPdfProgress('Completed successfully!');
+      setTimeout(() => {
+        setIsExportingPdf(false);
+      }, 1000);
+    } catch (error: any) {
+      console.error('PDF generation failure:', error);
+      setIsExportingPdf(false);
+      // Fallback to native printer interface
+      window.print();
+    }
   };
 
   // Generate public-facing shareable link
@@ -650,7 +744,7 @@ export default function App() {
             </div>
 
             {/* THE PRINT COMPONENT (Only visible during printing, hidden via index.css otherwise) */}
-            <div className="print-only">
+            <div id="pdf-report-content" className="print-only">
               <div className="p-10 space-y-8 bg-white text-slate-900">
                 <div className="border-b-2 border-indigo-600 pb-5 flex items-center justify-between">
                   <div>
@@ -1227,6 +1321,28 @@ export default function App() {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF GENERATION MODAL OVERLAY */}
+      {isExportingPdf && (
+        <div className="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-slate-200 p-8 rounded-3xl max-w-md w-full text-center space-y-5 shadow-2xl relative text-slate-850">
+            <div className="mx-auto w-12 h-12 bg-indigo-50 border border-indigo-250 text-indigo-600 rounded-2xl flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="text-base font-bold text-slate-900">Generating Professional PDF</h4>
+              <div className="text-xs text-indigo-700 font-semibold px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 inline-block">
+                {pdfProgress}
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed px-4">
+              We are compiling and formatting your active grading guidelines, visual comparisons, and corrective checklists into a beautifully polished vector-aligned client-facing PDF.
+            </p>
           </div>
         </div>
       )}
