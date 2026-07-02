@@ -1,15 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({
-  apiKey: apiKey,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
-
 async function fetchWebsiteSnippet(url: string): Promise<string> {
   try {
     let cleanUrl = url.trim();
@@ -133,12 +123,23 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Website URL is required" });
   }
 
-  if (!apiKey) {
+  const customKey = req.headers['x-gemini-key'] || req.body.customApiKey || process.env.GEMINI_API_KEY;
+
+  if (!customKey) {
     return res.status(500).json({ 
       error: "GEMINI_API_KEY environment variable is not defined on Vercel.", 
-      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables." 
+      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables, or provide a custom key in the settings panel." 
     });
   }
+
+  const ai = new GoogleGenAI({
+    apiKey: customKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 
   try {
     // 1. Scrape the website for real data

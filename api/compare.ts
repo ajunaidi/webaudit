@@ -1,15 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({
-  apiKey: apiKey,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
-
 export default async function handler(req: any, res: any) {
   // Handle CORS options preflight
   if (req.method === 'OPTIONS') {
@@ -29,12 +19,23 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Both Old Design and New Design images are required for comparison." });
   }
 
-  if (!apiKey) {
+  const customKey = req.headers['x-gemini-key'] || req.body.customApiKey || process.env.GEMINI_API_KEY;
+
+  if (!customKey) {
     return res.status(500).json({ 
       error: "GEMINI_API_KEY environment variable is not defined on Vercel.", 
-      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables." 
+      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables, or provide a custom key in the settings panel." 
     });
   }
+
+  const ai = new GoogleGenAI({
+    apiKey: customKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 
   try {
     // Extract base64 clean data (strip data:image/png;base64, etc.)

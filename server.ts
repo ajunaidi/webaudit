@@ -18,6 +18,9 @@ async function startServer() {
   // API Routes
   app.post("/api/audit", auditHandler);
   app.post("/api/compare", compareHandler);
+  app.get("/api/config", (req, res) => {
+    res.json({ hasApiKey: !!process.env.GEMINI_API_KEY });
+  });
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "WebAudit Pro Server is healthy" });
