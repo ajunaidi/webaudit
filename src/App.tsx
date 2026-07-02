@@ -1136,6 +1136,25 @@ export default function App() {
           </div>
         </div>
 
+        {/* DEMO MODE / MISSING API KEY BANNER */}
+        {(!hasServerKey || isDemoModeActive) && (
+          <div className="no-print bg-indigo-50 border border-indigo-150 rounded-xl p-4 mb-6 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-indigo-900 shadow-sm">
+            <div className="flex items-start gap-3">
+              <Sparkles className="w-5 h-5 flex-shrink-0 text-indigo-600 mt-0.5 sm:mt-0 animate-pulse" />
+              <div>
+                <strong className="text-sm font-bold block text-indigo-950">
+                  {isDemoModeActive ? '💡 Running in Local Demo Mode' : '🚀 Unlock Real-Time Live AI Audits'}
+                </strong>
+                <p className="mt-1 leading-relaxed text-indigo-850">
+                  {isDemoModeActive 
+                    ? "The backend is running in high-fidelity local demo mode. To activate real live-scraped AI audits, make sure to add your GEMINI_API_KEY to your Vercel Project Environment Variables."
+                    : "Add your GEMINI_API_KEY as an Environment Variable in your Vercel Dashboard to enable real-time deep live web audits and instant design critiques."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* LOADING SCREEN CONTAINER */}
         {loading && (
           <div className="no-print fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6">

@@ -263,7 +263,7 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
     return (
       <div className="p-6 text-center text-slate-500 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <p className="text-sm font-medium">Audits ke trends dekhne ke liye kam se kam 2 audits save karein.</p>
-        <p className="text-xs text-slate-400 mt-1">Jab aap multiple tests save karenge, yahan continuous graph show hoga.</p>
+        <p className="text-xs text-slate-450 mt-1">Jab aap multiple tests save karenge, yahan continuous graph show hoga.</p>
       </div>
     );
   }
@@ -292,30 +292,24 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
   const fillPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`;
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full flex flex-col gap-6">
-      <div className="w-full">
-        <h4 className="text-sm font-semibold tracking-wider text-indigo-655 uppercase mb-1">Performance Trend over time</h4>
-        <p className="text-xs text-slate-500 leading-relaxed">Aapki different website runs aur layout updates ki progressive evaluation.</p>
+    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-semibold tracking-wider text-indigo-650 uppercase mb-1">Performance Trend over time</h4>
+        <p className="text-xs text-slate-500">Aapki different website runs aur layout updates ki progressive evaluation.</p>
         
         <div className="mt-4 space-y-2 max-h-[140px] overflow-y-auto pr-1">
           {history.map((h, i) => (
             <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-0">
-              <span className="text-slate-700 font-medium truncate max-w-[160px]" title={h.url}>{h.url}</span>
-              <span className="text-slate-400 text-[10px]">{h.date}</span>
+              <span className="text-slate-700 font-medium truncate max-w-[150px]">{h.url}</span>
+              <span className="text-slate-450 text-[10px]">{h.date}</span>
               <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100/50">{h.score}%</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="w-full">
-        <svg 
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          width="100%"
-          height="auto"
-          style={{ display: 'block', overflow: 'visible' }}
-        >
+      <div className="w-full md:w-[360px] lg:w-[480px] overflow-x-auto">
+        <svg className="w-full h-auto overflow-visible min-w-[320px]" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
           <defs>
             <linearGradient id="trendFillGlow" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" stopColor="rgba(79, 70, 229, 0.15)" />
@@ -338,15 +332,13 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
                   y1={y}
                   x2={chartWidth - padding}
                   y2={y}
-                  stroke="#f1f5f9"
-                  strokeWidth="1"
+                  className="stroke-slate-100 stroke-1"
                 />
                 <text
                   x={padding - 10}
                   y={y + 4}
+                  className="text-[10px] fill-slate-400 text-right font-medium"
                   textAnchor="end"
-                  fill="#94a3b8"
-                  style={{ fontSize: '9px', fontWeight: '500', fontFamily: 'system-ui, sans-serif' }}
                 >
                   {level}%
                 </text>
@@ -364,6 +356,7 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
             stroke="url(#lineStrokeGlow)"
             strokeWidth="3"
             strokeLinecap="round"
+            className="filter drop-shadow-[0_2px_3px_rgba(79,70,229,0.1)]"
           />
 
           {/* Dots on points */}
@@ -373,18 +366,14 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
                 cx={p.x}
                 cy={p.y}
                 r="5"
-                fill="#ffffff"
-                stroke="#4f46e5"
-                strokeWidth="2"
-                style={{ cursor: 'pointer' }}
+                className="fill-white stroke-indigo-600 stroke-2 cursor-pointer hover:r-7 transition-all shadow-sm"
               />
               {/* Tooltip score text */}
               <text
                 x={p.x}
                 y={p.y - 12}
                 textAnchor="middle"
-                fill="#4338ca"
-                style={{ fontSize: '10px', fontWeight: '800', fontFamily: 'system-ui, sans-serif' }}
+                className="text-[10px] fill-slate-700 font-bold bg-white stroke-slate-200 stroke-1 px-1 py-0.5 rounded shadow-sm"
               >
                 {p.score}%
               </text>
@@ -393,8 +382,7 @@ export const HistoricalTrendChart: React.FC<HistoricalTrendChartProps> = ({ hist
                 x={p.x}
                 y={chartHeight - padding + 15}
                 textAnchor="middle"
-                fill="#64748b"
-                style={{ fontSize: '9px', fontWeight: '500', fontFamily: 'system-ui, sans-serif' }}
+                className="text-[9px] fill-slate-400 font-medium max-w-[50px] truncate"
               >
                 {p.date.split(',')[0]}
               </text>
