@@ -149,10 +149,8 @@ export default function App() {
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Custom API Key states
-  const [customApiKey, setCustomApiKey] = useState<string>(() => localStorage.getItem('webaudit_custom_api_key') || '');
+  // Server Key and Fallback Demo Mode states
   const [hasServerKey, setHasServerKey] = useState(false);
-  const [showKeySettings, setShowKeySettings] = useState(false);
   const [isDemoModeActive, setIsDemoModeActive] = useState(false);
   
   // Scraped inputs / Audit setup
@@ -334,16 +332,11 @@ export default function App() {
 
     let runFallback = false;
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (customApiKey) {
-        headers['x-gemini-key'] = customApiKey;
-      }
-
       const res = await fetch('/api/audit', {
         method: 'POST',
-        headers: headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           url: auditUrl,
           content: auditNotes,
@@ -763,16 +756,11 @@ export default function App() {
 
     let runFallback = false;
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (customApiKey) {
-        headers['x-gemini-key'] = customApiKey;
-      }
-
       const res = await fetch('/api/compare', {
         method: 'POST',
-        headers: headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           oldImage,
           newImage,
@@ -1131,18 +1119,6 @@ export default function App() {
                 )}
               </button>
             </nav>
-
-            <button
-              onClick={() => setShowKeySettings(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border cursor-pointer transition-all ${
-                (customApiKey || hasServerKey) 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 shadow-sm'
-                  : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm'
-              }`}
-            >
-              <Key className="w-3.5 h-3.5 text-current" />
-              <span>{(customApiKey || hasServerKey) ? 'Gemini Active' : 'Setup Gemini API'}</span>
-            </button>
           </div>
         </div>
       </header>
@@ -1161,7 +1137,7 @@ export default function App() {
         </div>
 
         {/* DEMO MODE / MISSING API KEY BANNER */}
-        {(!customApiKey && !hasServerKey || isDemoModeActive) && (
+        {(!hasServerKey || isDemoModeActive) && (
           <div className="no-print bg-indigo-50 border border-indigo-150 rounded-xl p-4 mb-6 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-indigo-900 shadow-sm">
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 flex-shrink-0 text-indigo-600 mt-0.5 sm:mt-0 animate-pulse" />
@@ -1171,17 +1147,11 @@ export default function App() {
                 </strong>
                 <p className="mt-1 leading-relaxed text-indigo-850">
                   {isDemoModeActive 
-                    ? "Your Vercel deployment has no GEMINI_API_KEY environment variable set. We have generated a high-fidelity local smart audit for you. Paste a key to activate real live-scraped AI!"
-                    : "Configure a free Gemini API key to run deep live crawls, evaluate customizable elements, and generate real, bespoke AI expert recommendations for any website URL."}
+                    ? "The backend is running in high-fidelity local demo mode. To activate real live-scraped AI audits, make sure to add your GEMINI_API_KEY to your Vercel Project Environment Variables."
+                    : "Add your GEMINI_API_KEY as an Environment Variable in your Vercel Dashboard to enable real-time deep live web audits and instant design critiques."}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowKeySettings(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/10 cursor-pointer transition-all active:scale-95 whitespace-nowrap"
-            >
-              Configure Gemini Key
-            </button>
           </div>
         )}
 
@@ -2371,98 +2341,7 @@ export default function App() {
         </div>
       )}
 
-      {/* GEMINI API KEY CONFIGURATION MODAL */}
-      {showKeySettings && (
-        <div className="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 p-6 sm:p-7 rounded-3xl max-w-lg w-full shadow-2xl relative text-slate-850 space-y-5 animate-fade-in">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-150 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl border border-indigo-150 animate-pulse">
-                  <Key className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Gemini API Configuration</h3>
-                  <p className="text-xs text-slate-500">Enable real-time, deep live AI audits on Vercel or locally.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowKeySettings(false)}
-                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-xl transition-all cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Explainer / Instructions */}
-            <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-2xl text-xs space-y-2 text-indigo-950">
-              <div className="font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                How to obtain a free Gemini API key:
-              </div>
-              <ol className="list-decimal list-inside space-y-1 text-indigo-850 pl-1">
-                <li>Visit <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline inline-flex items-center gap-0.5 font-semibold">Google AI Studio <ExternalLink className="w-3 h-3 inline" /></a></li>
-                <li>Click the blue <span className="font-semibold">"Create API key"</span> button.</li>
-                <li>Select a project and copy your generated key.</li>
-                <li>Paste your key below. It will be saved securely in your browser's local cache.</li>
-              </ol>
-            </div>
-
-            {/* Key Input */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">Your Gemini API Key</label>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={customApiKey}
-                  onChange={(e) => setCustomApiKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-700 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Lock className="w-3.5 h-3.5" />
-                </div>
-              </div>
-              <p className="text-[10px] text-slate-400">We store your key locally on your device. It is only sent directly to your own server APIs to power website audits and comparisons.</p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-between gap-2.5 pt-1.5">
-              <button
-                onClick={() => {
-                  setCustomApiKey('');
-                  localStorage.removeItem('webaudit_custom_api_key');
-                  setIsDemoModeActive(false);
-                  setShowKeySettings(false);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-rose-650 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95"
-              >
-                Clear Key / Use Defaults
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowKeySettings(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('webaudit_custom_api_key', customApiKey.trim());
-                    setCustomApiKey(customApiKey.trim());
-                    setIsDemoModeActive(false);
-                    setShowKeySettings(false);
-                  }}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 shadow-md shadow-indigo-650/10"
-                >
-                  Save API Key
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

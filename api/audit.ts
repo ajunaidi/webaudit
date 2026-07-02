@@ -123,17 +123,17 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Website URL is required" });
   }
 
-  const customKey = req.headers['x-gemini-key'] || req.body.customApiKey || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!customKey) {
+  if (!apiKey) {
     return res.status(500).json({ 
       error: "GEMINI_API_KEY environment variable is not defined on Vercel.", 
-      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables, or provide a custom key in the settings panel." 
+      details: "Please configure GEMINI_API_KEY in your Vercel Dashboard -> Project Settings -> Environment Variables." 
     });
   }
 
   const ai = new GoogleGenAI({
-    apiKey: customKey,
+    apiKey: apiKey,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
