@@ -31,6 +31,7 @@ export interface AuditReport {
   scores: AuditScores;
   clientSummary: string;
   issues: AuditIssue[];
+  keywords?: string;
 }
 
 export interface ComparisonItem {

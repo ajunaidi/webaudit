@@ -156,6 +156,13 @@ export const AuditEditor: React.FC<AuditEditorProps> = ({ report, onUpdate }) =>
             {report.url}
           </h3>
           <p className="text-xs text-slate-500 mt-1">Audit Run Date: <span className="text-slate-700 font-medium">{report.date}</span></p>
+          
+          {report.keywords && (
+            <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-150">Focus Keywords:</span>
+              <p className="text-xs font-mono font-bold text-slate-700 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded">{report.keywords}</p>
+            </div>
+          )}
         </div>
 
         <button

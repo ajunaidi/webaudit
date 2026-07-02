@@ -153,7 +153,7 @@ ${cleanText || "No readable content found"}
  * Audits a single website (by URL and optional extra context text)
  */
 app.post("/api/audit", async (req, res) => {
-  const { url, content, categories = ["design", "content", "seo", "cro", "ui"] } = req.body;
+  const { url, content, categories = ["design", "content", "seo", "cro", "ui"], keywords } = req.body;
   
   if (!url) {
     return res.status(400).json({ error: "Website URL is required" });
@@ -179,6 +179,7 @@ IMPORTANT INSTRUCTIONS:
   3. A robust 'solution' explaining step-by-step how to fix it in English, detailing the expected business and user benefits.
 - Provide realistic and fair 'scores' (0 to 100) for all aspects: design, content, seo, cro, ui, and an overall average score.
 - Create a client-facing 'clientSummary' (Executive Summary) summarizing the top wins and core action plan in elegant, persuasive English.
+${keywords ? `- VERY IMPORTANT: The user has provided specific focus keywords: "${keywords}". Analyze the website metadata, headings, and body content for these focus keywords. In your "seo" and "content" sections, evaluate keyword usage/placement, suggest structural or content optimization to increase keyword alignment/density, and recommend targeted strategies to improve ranking specifically for these keywords.` : ''}
     `;
 
     const userPrompt = `
@@ -188,6 +189,8 @@ Here is the real scraped snippet and structural statistics of the website:
 ---
 ${scrapedSnippet}
 ---
+
+${keywords ? `SPECIFIC FOCUS KEYWORDS TO IMPROVE RANKINGS FOR:\n${keywords}\n---` : ''}
 
 Additional User Notes / Context:
 ---
@@ -254,6 +257,9 @@ Return the response as a JSON object matching the requested schema. Ensure all f
     }
 
     const reportData = JSON.parse(reportText);
+    if (keywords) {
+      reportData.keywords = keywords;
+    }
     
     // Return report
     res.json(reportData);
