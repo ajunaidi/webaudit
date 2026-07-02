@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Animations helper */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Base body styles */
+body {
+  font-family: var(--font-sans);
+  background-color: #f8fafc; /* Slate 50 */
+  color: #0f172a; /* Slate 900 */
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9; /* Slate 100 */
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Slate 300 */
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* Slate 400 */
+}
+
+/* Hide print-only elements on screen */
+.print-only {
+  display: none !important;
+}
+
+/* PRINT MEDIA STYLES - Produces high-end pixel-perfect PDF export natively */
+@media print {
+  /* Set light background for printing */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide navigation controls, forms, inputs, loaders, buttons, and editable report containers */
+  .no-print, 
+  button, 
+  select, 
+  input, 
+  textarea,
+  .upload-box,
+  .history-sidebar,
+  .editor-header,
+  .printable-report,
+  nav {
+    display: none !important;
+  }
+
+  /* Show the active printable elements and expand full width */
+  .print-only {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0.5in !important; /* Elegant margin margins */
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Force headers to remain clear on printable cards */
+  .printable-card {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 20px !important;
+    padding: 20px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Typography color adjustment */
+  h1, h2, h3, h4, h5, h6 {
+    color: #0f172a !important;
+    font-family: var(--font-display) !important;
+    page-break-after: avoid;
+  }
+
+  p, span, li, td {
+    color: #334155 !important;
+  }
+
+  /* Highlight grids on printout */
+  .grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 15px !important;
+  }
+
+  /* Side action items adjustments */
+  .flex-row-print {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  /* Page break rules */
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* Hide shadows, glows, and filter effects */
+  * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  /* Adjust SVGs for print contrast */
+  svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}

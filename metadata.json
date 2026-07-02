@@ -1,0 +1,6 @@
+{
+  "name": "WebAudit Pro",
+  "description": "A comprehensive website audit and design comparison tool. Run audits for SEO, CRO, Design, Content, and UX, compare old vs new designs with image analysis, edit reports in real-time, and export professional PDF summaries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
