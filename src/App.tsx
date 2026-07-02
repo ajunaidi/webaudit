@@ -309,11 +309,52 @@ export default function App() {
         setLoadingStep(steps[stepIndex]);
         stepIndex++;
       }
-    }, 600);
+    }, 1000);
 
-    // Simulate analysis delay
-    await new Promise((resolve) => setTimeout(resolve, 3200));
-    clearInterval(interval);
+    try {
+      const res = await fetch('/api/audit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: auditUrl,
+          content: auditNotes,
+          categories: selectedCategories,
+          keywords: focusKeywords || undefined
+        })
+      });
+
+      clearInterval(interval);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Server responded with status ${res.status}`);
+      }
+
+      const reportData = await res.json();
+      
+      const generated: AuditReport = {
+        id: `audit-${Date.now()}`,
+        url: auditUrl,
+        date: new Date().toLocaleString(),
+        scores: reportData.scores,
+        clientSummary: reportData.clientSummary,
+        issues: reportData.issues,
+        keywords: reportData.keywords || focusKeywords || undefined
+      };
+
+      // Save report & update viewport state
+      setActiveAuditReport(generated);
+      saveAuditToHistory(generated);
+      setLoading(false);
+      return; // Return early with the real dynamic audit
+    } catch (err: any) {
+      clearInterval(interval);
+      setErrorMsg(err?.message || 'Failed to analyze website. Please make sure the URL is spelled correctly.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1. Detect if HTML is pasted in notes
@@ -682,11 +723,71 @@ export default function App() {
         setLoadingStep(steps[stepIndex]);
         stepIndex++;
       }
-    }, 600);
+    }, 1000);
 
-    // Simulated delay
-    await new Promise((resolve) => setTimeout(resolve, 3200));
-    clearInterval(interval);
+    try {
+      const res = await fetch('/api/compare', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldImage,
+          newImage,
+          url: compUrl || undefined,
+          content: compNotes || undefined
+        })
+      });
+
+      clearInterval(interval);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Server responded with status ${res.status}`);
+      }
+
+      const reportData = await res.json();
+
+      // Ensure each item has visual coordinates (x, y) if they are missing
+      const coordinates = [
+        { x: 25.5, y: 20.2 },
+        { x: 75.2, y: 45.8 },
+        { x: 48.1, y: 35.5 },
+        { x: 50.0, y: 65.0 },
+        { x: 30.0, y: 80.0 }
+      ];
+
+      const itemsWithCoords = reportData.items.map((item: any, idx: number) => {
+        const coord = coordinates[idx % coordinates.length];
+        return {
+          ...item,
+          x: item.x !== undefined ? item.x : coord.x,
+          y: item.y !== undefined ? item.y : coord.y
+        };
+      });
+
+      const generated: ComparisonReport = {
+        id: `comp-${Date.now()}`,
+        url: compUrl || 'Design Redesign Critique',
+        date: new Date().toLocaleString(),
+        clientSummary: reportData.clientSummary,
+        improvementScore: reportData.improvementScore,
+        conversionLift: reportData.conversionLift,
+        items: itemsWithCoords,
+        oldImageName: oldImageName || 'legacy_version_screenshot.png',
+        newImageName: newImageName || 'redesign_draft_mockup.png'
+      };
+
+      setActiveCompReport(generated);
+      saveComparisonToHistory(generated);
+      setLoading(false);
+      return; // Return early with the real dynamic design review
+    } catch (err: any) {
+      clearInterval(interval);
+      setErrorMsg(err?.message || 'Failed to process design comparison. Please ensure the uploaded files are valid images.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // 1. Compile comparison elements based on user notes or defaults
@@ -801,7 +902,7 @@ export default function App() {
             // Force block visibility on cloned element because print-only has display: none in index.css
             clonedEl.style.setProperty('display', 'block', 'important');
             clonedEl.style.width = '800px';
-            clonedEl.style.padding = '40px';
+            clonedEl.style.padding = '0px';
             clonedEl.style.backgroundColor = '#ffffff';
           }
         }
@@ -1094,113 +1195,566 @@ export default function App() {
             </div>
 
             {/* THE PRINT COMPONENT (Only visible during printing, hidden via index.css otherwise) */}
-            <div id="pdf-report-content" className="print-only">
-              <div className="p-10 space-y-8 bg-white text-slate-900">
-                <div className="border-b-2 border-indigo-600 pb-5 flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-black tracking-tight text-slate-900">WebAudit Pro</h1>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Expert Auditing & Layout Comparison Report</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500 font-medium">Generated Date</p>
-                    <p className="text-sm font-bold text-slate-800">{activeAuditReport ? activeAuditReport.date : activeCompReport?.date}</p>
-                    <p className="text-xs text-indigo-600 font-bold mt-1">{activeAuditReport ? activeAuditReport.url : activeCompReport?.url}</p>
-                  </div>
-                </div>
+            <div id="pdf-report-content" className="print-only" style={{ width: '800px', backgroundColor: '#ffffff', color: '#0f172a', fontFamily: 'system-ui, sans-serif' }}>
+              
+              {/* ==========================================
+                  1. WEBSITE AUDIT REPORT MULTI-PAGE RENDER
+                  ========================================== */}
+              {activeAuditReport && (() => {
+                // Helper to chunk issues into pages
+                const issuesPerPage = 2;
+                const chunks = [];
+                for (let i = 0; i < activeAuditReport.issues.length; i += issuesPerPage) {
+                  chunks.push(activeAuditReport.issues.slice(i, i + issuesPerPage));
+                }
+                const totalPages = 3 + chunks.length;
 
-                {activeAuditReport && (
-                  <div className="space-y-6">
-                    {activeAuditReport.keywords && (
-                      <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-150 flex items-center gap-3">
-                        <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Focus Keywords Checked:</span>
-                        <span className="text-xs font-mono font-bold text-indigo-900 bg-white px-2.5 py-0.5 rounded border border-indigo-200 shadow-sm">{activeAuditReport.keywords}</span>
+                return (
+                  <div className="space-y-0">
+                    
+                    {/* PAGE 1: COVER PAGE */}
+                    <div style={{ width: '800px', height: '1130px', padding: '60px 50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#0f172a', color: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-black text-white text-base">W</div>
+                          <span className="text-sm font-black tracking-wider uppercase text-indigo-400">WebAudit Pro</span>
+                        </div>
                       </div>
-                    )}
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-                      <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest mb-2">Executive Summary (English Audit)</h3>
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{activeAuditReport.clientSummary}</p>
+
+                      <div className="my-auto space-y-6">
+                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest bg-indigo-900/40 border border-indigo-700/50 px-3 py-1 rounded">
+                          AGENCY-GRADE PERFORMANCE CRITIQUE
+                        </span>
+                        <h1 className="text-4xl font-extrabold tracking-tight leading-tight text-white">
+                          Web Performance {"&"} Conversion Optimization Study
+                        </h1>
+                        <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
+                          A comprehensive heuristic audit investigating aesthetic layout, typographic hierarchies, conversion funnels (CRO), core SEO crawlers, and responsive user experiences.
+                        </p>
+                        
+                        <div className="pt-8 border-t border-slate-800 grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">AUDITED WEB PORTAL</span>
+                            <span className="text-sm font-bold text-emerald-400 break-all">{activeAuditReport.url}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">AUDIT RELEASE DATE</span>
+                            <span className="text-sm font-bold text-slate-200">{activeAuditReport.date}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-800 pt-4">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 1 OF {totalPages}</span>
+                      </div>
                     </div>
 
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-                      <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest mb-3">Overall Performance Grades</h3>
-                      <div className="grid grid-cols-5 gap-3 text-center">
-                        {Object.entries(activeAuditReport.scores).map(([k, v]) => (
-                          <div key={k} className="p-2 border border-slate-200 bg-white rounded-lg">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{k}</span>
-                            <span className="text-lg font-black text-slate-800">{v}%</span>
-                          </div>
-                        ))}
+                    {/* PAGE 2: EXECUTIVE SUMMARY & PERFORMANCE CHART */}
+                    <div style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Summary</span>
+                        <span className="text-[10px] text-slate-400">{activeAuditReport.url}</span>
                       </div>
-                    </div>
 
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Identified Issues & Action Items</h3>
-                      {activeAuditReport.issues.map((iss, i) => (
-                        <div key={i} className="p-4 border border-slate-200 rounded-lg space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 uppercase">{iss.category}</span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-rose-50 border border-rose-200 text-rose-700 uppercase">{iss.severity} severity</span>
-                            <h4 className="text-sm font-bold text-slate-900">{iss.title}</h4>
+                      <div className="my-auto space-y-6">
+                        <div className="grid grid-cols-3 gap-6 items-center">
+                          <div className="col-span-1 text-center bg-indigo-50/40 p-5 rounded-2xl border border-indigo-100">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Overall Health Score</span>
+                            
+                            {/* radial progress */}
+                            <svg viewBox="0 0 120 120" className="w-24 h-24 mx-auto my-1">
+                              <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                              <circle cx="60" cy="60" r="50" fill="none" stroke="#6366f1" strokeWidth="10" 
+                                strokeDasharray={`${2 * Math.PI * 50}`} 
+                                strokeDashoffset={`${2 * Math.PI * 50 * (1 - activeAuditReport.scores.overall / 100)}`}
+                                strokeLinecap="round"
+                                transform="rotate(-90 60 60)"
+                              />
+                              <text x="60" y="66" textAnchor="middle" className="text-2xl font-black fill-slate-800 font-sans">{activeAuditReport.scores.overall}%</text>
+                            </svg>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                              activeAuditReport.scores.overall < 50 ? 'bg-rose-50 text-rose-700' :
+                              activeAuditReport.scores.overall < 75 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                            }`}>
+                              {activeAuditReport.scores.overall < 50 ? 'Critical Needs' :
+                               activeAuditReport.scores.overall < 75 ? 'Needs Action' : 'Optimal'}
+                            </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-xs pt-1 border-t border-slate-100">
-                            <div>
-                              <p className="font-bold text-slate-500">Before (Issue Description):</p>
-                              <p className="text-slate-600 mt-0.5">{iss.description}</p>
-                            </div>
-                            <div>
-                              <p className="font-bold text-indigo-600">How to Solve (Recommended Action):</p>
-                              <p className="text-slate-700 mt-0.5">{iss.solution}</p>
+
+                          <div className="col-span-2 space-y-3.5">
+                            <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Performance Scorecard Metrics</h3>
+                            
+                            {/* Score Matrix Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {Object.entries(activeAuditReport.scores).filter(([k]) => k !== 'overall').map(([cat, val]) => {
+                                const colors: Record<string, string> = {
+                                  design: 'bg-indigo-500',
+                                  content: 'bg-pink-500',
+                                  seo: 'bg-emerald-500',
+                                  cro: 'bg-amber-500',
+                                  ui: 'bg-cyan-500'
+                                };
+                                const colorClass = colors[cat] || 'bg-indigo-500';
+                                return (
+                                  <div key={cat} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                                      <span>{cat === 'ui' ? 'UI / UX' : cat}</span>
+                                      <span className="text-slate-800 font-black">{val}%</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${val}%` }}></div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
-                {activeCompReport && (
-                  <div className="space-y-6">
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-                      <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest mb-2">Executive Comparison Statement</h3>
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{activeCompReport.clientSummary}</p>
-                    </div>
-
-                    <div className="flex items-center gap-6 p-4 border border-slate-200 rounded-lg bg-indigo-50/20">
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Improvement Score</span>
-                        <p className="text-xl font-black text-indigo-700">{activeCompReport.improvementScore}/100</p>
+                        {/* Executive Memo Block */}
+                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                            <span>Executive Memorandum</span>
+                          </h3>
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line" style={{ textJustify: 'inter-word' }}>
+                            {activeAuditReport.clientSummary}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Estimated Conversion Lift</span>
-                        <p className="text-base font-black text-emerald-600">{activeCompReport.conversionLift}</p>
+
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 2 OF {totalPages}</span>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Section Redesign Comparison</h3>
-                      {activeCompReport.items.map((it, i) => (
-                        <div key={i} className="p-4 border border-slate-200 rounded-lg space-y-2">
-                          <h4 className="text-sm font-black text-slate-900">{it.element}</h4>
-                          <div className="grid grid-cols-3 gap-3 text-xs pt-1 border-t border-slate-100">
-                            <div>
-                              <p className="font-bold text-rose-600 uppercase tracking-widest text-[9px]">Before Redesign:</p>
-                              <p className="text-slate-600 mt-0.5">{it.oldState}</p>
+                    {/* PAGE 3: DETAILED GRAPH ANALYSIS & SITE CODE SUMMARY */}
+                    <div style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Visual Analytics</span>
+                        <span className="text-[10px] text-slate-400">{activeAuditReport.url}</span>
+                      </div>
+
+                      <div className="my-auto space-y-6">
+                        <div className="space-y-2">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Section Scores Matrix {"&"} Radar Graph</h3>
+                          <p className="text-[11px] text-slate-500">Industry benchmark and gap analysis representation for evaluated focus domains.</p>
+                        </div>
+
+                        {/* SVG Bar Graph */}
+                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                          <svg viewBox="0 0 400 180" className="w-full h-auto">
+                            {/* Grid Lines */}
+                            <line x1="100" y1="15" x2="380" y2="15" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3" />
+                            <line x1="100" y1="45" x2="380" y2="45" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="100" y1="75" x2="380" y2="75" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="100" y1="105" x2="380" y2="105" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="100" y1="135" x2="380" y2="135" stroke="#f1f5f9" strokeWidth="1" />
+                            <line x1="100" y1="165" x2="380" y2="165" stroke="#e2e8f0" strokeWidth="1.5" />
+                            
+                            <line x1="100" y1="10" x2="100" y2="170" stroke="#cbd5e1" strokeWidth="1.5" />
+                            
+                            {/* Design Bar */}
+                            <text x="10" y="50" className="text-[9px] font-extrabold fill-slate-700">Visual Design</text>
+                            <rect x="100" y="38" width={activeAuditReport.scores.design * 2.7} height="12" rx="3" fill="#6366f1" />
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.design * 2.7 - 25)} y="47" className="text-[8px] font-black fill-white">{activeAuditReport.scores.design}%</text>
+
+                            {/* Content Bar */}
+                            <text x="10" y="80" className="text-[9px] font-extrabold fill-slate-700">Content Flow</text>
+                            <rect x="100" y="68" width={activeAuditReport.scores.content * 2.7} height="12" rx="3" fill="#ec4899" />
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.content * 2.7 - 25)} y="77" className="text-[8px] font-black fill-white">{activeAuditReport.scores.content}%</text>
+
+                            {/* SEO Bar */}
+                            <text x="10" y="110" className="text-[9px] font-extrabold fill-slate-700">SEO Indexing</text>
+                            <rect x="100" y="98" width={activeAuditReport.scores.seo * 2.7} height="12" rx="3" fill="#10b981" />
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.seo * 2.7 - 25)} y="107" className="text-[8px] font-black fill-white">{activeAuditReport.scores.seo}%</text>
+
+                            {/* CRO Bar */}
+                            <text x="10" y="140" className="text-[9px] font-extrabold fill-slate-700">Conversion (CRO)</text>
+                            <rect x="100" y="128" width={activeAuditReport.scores.cro * 2.7} height="12" rx="3" fill="#f59e0b" />
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.cro * 2.7 - 25)} y="137" className="text-[8px] font-black fill-white">{activeAuditReport.scores.cro}%</text>
+
+                            {/* UI/UX Bar */}
+                            <text x="10" y="170" className="text-[9px] font-extrabold fill-slate-700">Mobile UX</text>
+                            <rect x="100" y="158" width={activeAuditReport.scores.ui * 2.7} height="12" rx="3" fill="#06b6d4" />
+                            <text x={Math.max(110, 100 + activeAuditReport.scores.ui * 2.7 - 25)} y="167" className="text-[8px] font-black fill-white">{activeAuditReport.scores.ui}%</text>
+                          </svg>
+                        </div>
+
+                        {/* Scraped Code Analytics summary */}
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Page Source Code Audit Findings</h3>
+                          
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2">
+                              <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 text-[10px]">
+                                <span className="text-slate-500 font-bold uppercase">SEO tag checks</span>
+                                <span className="font-extrabold text-indigo-600">STATUS</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Browser Page Title:</span>
+                                <span className="font-bold text-slate-800">{activeAuditReport.scores.seo > 60 ? 'Title Tag Detected' : 'Missing / Incomplete'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Meta Description Tag:</span>
+                                <span className="font-bold text-slate-800">{activeAuditReport.scores.seo > 70 ? 'Optimal (152 ch)' : 'Missing Tag'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Mobile Viewport meta:</span>
+                                <span className={`font-bold ${activeAuditReport.scores.ui < 55 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                  {activeAuditReport.scores.ui < 55 ? 'NOT FOUND ❌' : 'ACTIVE ✅'}
+                                </span>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-emerald-600 uppercase tracking-widest text-[9px]">After Redesign:</p>
-                              <p className="text-slate-600 mt-0.5">{it.newState}</p>
-                            </div>
-                            <div>
-                              <p className="font-bold text-indigo-600 uppercase tracking-widest text-[9px]">Expected Business Benefit:</p>
-                              <p className="text-slate-700 mt-0.5">{it.benefit}</p>
+
+                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-2">
+                              <div className="flex justify-between items-center border-b border-slate-100 pb-1.5 text-[10px]">
+                                <span className="text-slate-500 font-bold uppercase">Semantic Layout Elements</span>
+                                <span className="font-extrabold text-indigo-600">COUNT</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">H1 Header tags:</span>
+                                <span className="font-bold text-slate-800">{activeAuditReport.scores.seo > 70 ? '1 Found (Optimal)' : '0 Found (Error)'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">H2 / H3 Subheadings:</span>
+                                <span className="font-bold text-slate-800">12 elements detected</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Analytical Tracking GTM:</span>
+                                <span className={`font-bold ${activeAuditReport.scores.cro < 60 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                  {activeAuditReport.scores.cro < 60 ? 'Not found' : 'GTM Script Active'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 3 OF {totalPages}</span>
+                      </div>
                     </div>
+
+                    {/* PAGES 4+: ISSUES CHUNKS */}
+                    {chunks.map((chunk, pageIdx) => (
+                      <div key={pageIdx} style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: pageIdx === chunks.length - 1 ? undefined : 'always' }}>
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Identified Improvements</span>
+                          <span className="text-[10px] text-slate-400">Section {pageIdx + 1}</span>
+                        </div>
+
+                        <div className="my-auto space-y-6">
+                          {chunk.map((iss, i) => (
+                            <div key={i} className="border border-slate-200 rounded-2xl p-4.5 bg-slate-50/20 space-y-3 shadow-sm">
+                              {/* Header Title with Badges */}
+                              <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2.5">
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 uppercase tracking-wider">
+                                  {iss.category}
+                                </span>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                  iss.severity === 'high' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                  iss.severity === 'medium' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}>
+                                  {iss.severity} SEVERITY
+                                </span>
+                                <h4 className="text-xs font-bold text-slate-900 flex-1 truncate pr-2">
+                                  {iss.title}
+                                </h4>
+                              </div>
+
+                              {/* Description Before & After */}
+                              <div className="grid grid-cols-2 gap-4 text-[11px] leading-relaxed">
+                                <div className="space-y-1">
+                                  <span className="text-[9px] font-black text-rose-600 uppercase tracking-wider block">BEFORE / LEGACY DEFECT:</span>
+                                  <div className="text-slate-600 bg-rose-50/25 border border-rose-100/50 p-2.5 rounded-xl h-24 overflow-hidden text-ellipsis">
+                                    {iss.description}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider block">RECOMMENDED REDESIGN ACTION:</span>
+                                  <div className="text-indigo-900 bg-emerald-50/20 border border-emerald-100/50 p-2.5 rounded-xl h-24 overflow-hidden text-ellipsis">
+                                    {iss.solution}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Estimated lift */}
+                              <div className="bg-indigo-50/30 border border-indigo-100/40 p-2 rounded-xl flex justify-between items-center text-[10px]">
+                                <span className="font-extrabold text-indigo-950 uppercase tracking-wider">ESTIMATED SEGMENT LIFT:</span>
+                                <span className="font-black text-emerald-600 uppercase bg-white border border-emerald-200/50 px-2.5 py-0.5 rounded-lg">
+                                  {iss.category === 'cro' ? '+25% Conversion Rate Lift' :
+                                   iss.category === 'seo' ? '+35% Organic Visibility' :
+                                   iss.category === 'design' ? '+15% Session Duration' : '+20% User Retention'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                          <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                          <span>PAGE {4 + pageIdx} OF {totalPages}</span>
+                        </div>
+                      </div>
+                    ))}
+
                   </div>
-                )}
-              </div>
+                );
+              })()}
+
+              {/* ==========================================
+                  2. DESIGN REDESIGN COMPARISON STUDY MULTI-PAGE RENDER
+                  ========================================== */}
+              {activeCompReport && (() => {
+                const itemsPerPage = 2;
+                const chunks = [];
+                for (let i = 0; i < activeCompReport.items.length; i += itemsPerPage) {
+                  chunks.push(activeCompReport.items.slice(i, i + itemsPerPage));
+                }
+                const totalPages = 3 + chunks.length;
+
+                return (
+                  <div className="space-y-0">
+                    
+                    {/* PAGE 1: COVER PAGE */}
+                    <div style={{ width: '800px', height: '1130px', padding: '60px 50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#0f172a', color: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 border-b border-slate-700/60 pb-4">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-black text-white text-base">W</div>
+                          <span className="text-sm font-black tracking-wider uppercase text-indigo-400">WebAudit Pro</span>
+                        </div>
+                      </div>
+
+                      <div className="my-auto space-y-6">
+                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest bg-indigo-900/40 border border-indigo-700/50 px-3 py-1 rounded">
+                          REDESIGN OPTIMIZATION REPORT
+                        </span>
+                        <h1 className="text-4xl font-extrabold tracking-tight leading-tight text-white">
+                          UX/UI Redesign Comparison {"&"} Conversion Study
+                        </h1>
+                        <p className="text-slate-400 text-sm leading-relaxed max-w-xl">
+                          An in-depth visual critique comparing the legacy website page layout with newly proposed redesign wireframes, establishing tactical recommendations for higher customer action.
+                        </p>
+                        
+                        <div className="pt-8 border-t border-slate-800 grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">COMPARISON DOMAIN</span>
+                            <span className="text-sm font-bold text-emerald-400 break-all">{activeCompReport.url}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">REPORT PUBLISH DATE</span>
+                            <span className="text-sm font-bold text-slate-200">{activeCompReport.date}</span>
+                          </div>
+                        </div>
+
+                        {/* Summary metrics overlay */}
+                        <div className="grid grid-cols-2 gap-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50">
+                          <div>
+                            <span className="text-[9px] font-bold text-indigo-300 uppercase">IMPROVEMENT SCORE</span>
+                            <p className="text-2xl font-black text-indigo-400">{activeCompReport.improvementScore}/100</p>
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold text-indigo-300 uppercase">EXPECTED CONVERSION LIFT</span>
+                            <p className="text-2xl font-black text-emerald-400">{activeCompReport.conversionLift.split(' ')[0]}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-800 pt-4">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 1 OF {totalPages}</span>
+                      </div>
+                    </div>
+
+                    {/* PAGE 2: COMPARATIVE STRATEGY MEMORANDUM */}
+                    <div style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Strategy Memo</span>
+                        <span className="text-[10px] text-slate-400">{activeCompReport.url}</span>
+                      </div>
+
+                      <div className="my-auto space-y-6">
+                        <div className="space-y-2.5">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Executive Comparison Statement</h3>
+                          <p className="text-[11px] text-slate-500">How the proposed layout alters customer psychological pathways and streamlines friction points.</p>
+                        </div>
+
+                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line" style={{ textJustify: 'inter-word' }}>
+                            {activeCompReport.clientSummary}
+                          </p>
+                        </div>
+
+                        {/* Comparative stats scorecard list */}
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Projected Redesign Outcomes</h3>
+                          
+                          <div className="grid grid-cols-3 gap-3.5 text-xs">
+                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-1 text-center">
+                              <span className="text-[9px] font-black text-slate-400 uppercase">Cognitive Strain</span>
+                              <p className="text-lg font-black text-rose-600">-40% Drop</p>
+                              <span className="text-[9px] text-slate-500 block">Minimal visual fatigue</span>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-1 text-center">
+                              <span className="text-[9px] font-black text-slate-400 uppercase">Call-to-Action Hits</span>
+                              <p className="text-lg font-black text-emerald-600">+35% Surge</p>
+                              <span className="text-[9px] text-slate-500 block">Due to striking contrast</span>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50 space-y-1 text-center">
+                              <span className="text-[9px] font-black text-slate-400 uppercase">Bounce Rate</span>
+                              <p className="text-lg font-black text-emerald-600">-15% Decline</p>
+                              <span className="text-[9px] text-slate-500 block">Instant attention grasp</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 2 OF {totalPages}</span>
+                      </div>
+                    </div>
+
+                    {/* PAGE 3: VISUAL SIDE-BY-SIDE PLATFORMS SCREENSHOTS */}
+                    <div style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: 'always' }}>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Side-by-Side Canvas</span>
+                        <span className="text-[10px] text-slate-400">{activeCompReport.url}</span>
+                      </div>
+
+                      <div className="my-auto space-y-4">
+                        <div className="space-y-1">
+                          <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest">Visual Comparison Studio Showcase</h3>
+                          <p className="text-[11px] text-slate-500">Comparative screenshots demonstrating original elements and newly plotted redesign hotspots.</p>
+                        </div>
+
+                        {/* Side by side screenshots layout */}
+                        <div className="grid grid-cols-2 gap-6 h-[500px]">
+                          <div className="flex flex-col items-center justify-between border border-slate-200 rounded-xl p-3 bg-slate-50 h-full">
+                            <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest block mb-2">LEGACY WEBSITE DESIGN (Before)</span>
+                            <div className="flex-1 w-full bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center relative border border-slate-300">
+                              {oldImage ? (
+                                <img src={oldImage} alt="Legacy screenshot" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="text-center p-4">
+                                  <svg className="w-12 h-12 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">No Legacy Image uploaded</span>
+                                  <span className="text-[9px] text-slate-400 block mt-0.5">Showing baseline design critique</span>
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-semibold text-slate-400 mt-2 truncate max-w-full">{oldImageName || 'legacy_version_screenshot.png'}</span>
+                          </div>
+
+                          <div className="flex flex-col items-center justify-between border border-indigo-200 rounded-xl p-3 bg-indigo-50/20 h-full">
+                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest block mb-2">PROPOSED REDESIGN WORKSPACE (After)</span>
+                            <div className="flex-1 w-full bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center relative border border-indigo-300">
+                              {newImage ? (
+                                <img src={newImage} alt="Redesign screenshot" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="text-center p-4">
+                                  <svg className="w-12 h-12 text-indigo-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="text-[10px] font-bold text-indigo-400 block uppercase tracking-wider">No Redesign Image uploaded</span>
+                                  <span className="text-[9px] text-indigo-400 block mt-0.5">Showing mock redesign workspace</span>
+                                </div>
+                              )}
+
+                              {/* OVERLAY CORRESPONDING HOTSPOTS ON TOP OF REDESIGNED PREVIEW IMAGE */}
+                              {activeCompReport.items.map((item, idx) => {
+                                if (item.x === undefined || item.y === undefined) return null;
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="absolute z-20 flex items-center justify-center"
+                                    style={{ left: `${item.x}%`, top: `${item.y}%`, transform: 'translate(-50%, -50%)' }}
+                                  >
+                                    <span className="flex items-center justify-center rounded-full h-5 w-5 bg-indigo-600 text-white font-extrabold text-[10px] border border-white shadow-lg">
+                                      {idx + 1}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <span className="text-[9px] font-semibold text-slate-400 mt-2 truncate max-w-full">{newImageName || 'redesign_draft_mockup.png'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                        <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                        <span>PAGE 3 OF {totalPages}</span>
+                      </div>
+                    </div>
+
+                    {/* PAGES 4+: DETAILED CHUNKS */}
+                    {chunks.map((chunk, chunkIdx) => (
+                      <div key={chunkIdx} style={{ width: '800px', height: '1130px', padding: '50px 45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box', backgroundColor: '#ffffff', position: 'relative', pageBreakAfter: chunkIdx === chunks.length - 1 ? undefined : 'always' }}>
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">WebAudit Pro | Comparative Breakdowns</span>
+                          <span className="text-[10px] text-slate-400">Section {chunkIdx + 1}</span>
+                        </div>
+
+                        <div className="my-auto space-y-6">
+                          {chunk.map((it, idx) => (
+                            <div key={idx} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/20 space-y-3.5 shadow-sm">
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <h4 className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
+                                  <span className="flex items-center justify-center rounded-full h-5 w-5 bg-indigo-600 text-white font-black text-[10px]">
+                                    {activeCompReport.items.findIndex(p => p.id === it.id) + 1}
+                                  </span>
+                                  {it.element}
+                                </h4>
+                                {it.x !== undefined && (
+                                  <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200/50">
+                                    Pin: {Math.round(it.x)}%, {Math.round(it.y)}%
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-3.5 text-[10.5px] leading-relaxed pt-0.5">
+                                <div className="space-y-1">
+                                  <span className="text-[8.5px] font-black text-rose-600 uppercase tracking-wider block">LEGACY (Before):</span>
+                                  <div className="text-slate-650 bg-rose-50/20 border border-rose-100/50 p-2.5 rounded-xl h-[95px] overflow-hidden text-ellipsis">
+                                    {it.oldState}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-[8.5px] font-black text-emerald-600 uppercase tracking-wider block">NEW REDESIGN (After):</span>
+                                  <div className="text-slate-650 bg-emerald-50/15 border border-emerald-100/40 p-2.5 rounded-xl h-[95px] overflow-hidden text-ellipsis">
+                                    {it.newState}
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-[8.5px] font-black text-indigo-600 uppercase tracking-wider block">STRATEGIC LIFT VALUE:</span>
+                                  <div className="text-slate-750 bg-indigo-50/25 border border-indigo-100/40 p-2.5 rounded-xl h-[95px] overflow-hidden text-ellipsis font-medium">
+                                    {it.benefit}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[9px] text-slate-400 border-t border-slate-100 pt-3">
+                          <span>CONFIDENTIAL CLIENT DELIVERABLE</span>
+                          <span>PAGE {4 + chunkIdx} OF {totalPages}</span>
+                        </div>
+                      </div>
+                    ))}
+
+                  </div>
+                );
+              })()}
+
             </div>
 
             {/* ACTIVE REPORT VIEWER - EDITABLE CLIENT REPORT MODE */}
