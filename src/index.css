@@ -49,9 +49,14 @@ body {
   background: #94a3b8; /* Slate 400 */
 }
 
-/* Hide print-only elements on screen */
+/* Hide print-only elements on screen but keep them rendered so their SVG charts have layout */
 .print-only {
-  display: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 800px !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* PRINT MEDIA STYLES - Produces high-end pixel-perfect PDF export natively */
@@ -81,9 +86,12 @@ body {
 
   /* Show the active printable elements and expand full width */
   .print-only {
+    position: static !important;
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0.5in !important; /* Elegant margin margins */
     background: transparent !important;

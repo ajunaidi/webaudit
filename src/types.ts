@@ -24,6 +24,14 @@ export interface AuditScores {
   overall: number;
 }
 
+export interface SeoChecklistItem {
+  id: string;
+  category: 'meta' | 'alt' | 'headings';
+  label: string;
+  completed: boolean;
+  details?: string;
+}
+
 export interface AuditReport {
   id: string;
   url: string;
@@ -32,6 +40,7 @@ export interface AuditReport {
   clientSummary: string;
   issues: AuditIssue[];
   keywords?: string;
+  seoChecklist?: SeoChecklistItem[];
 }
 
 export interface ComparisonItem {
